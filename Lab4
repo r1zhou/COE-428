@@ -1,0 +1,245 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX_STATES 8
+
+typedef struct position_machine {
+    char name;
+    struct position_machine *next0;
+    struct position_machine *next1;
+} position;
+
+void initialize_states();
+void print_states();
+void change_states(position *current, char inp[]);
+void garbage_identify(position *current);
+void delete_states(position *current, char inp[]);
+void print_garbage();
+void reset_garbage();
+char next_char(char inp[], int start_position);
+int garbage_empty();
+int garbage_equals_deleted();
+void to_upperCase(char inp[]);
+
+char garbage[MAX_STATES];
+char deleted[] = {"00000000"};
+int i;
+position fsm[MAX_STATES];
+
+int main(int argc, char * argv[]) {
+    char input[10];
+    position *current = fsm; //Starting position is A
+
+    initialize_states();
+
+    printf("%c\n", current->name);
+
+    while (gets(input)) {
+        to_Uppercase(input);
+
+        switch (input[0]) {
+            case '0':
+                current = current->next0;
+                printf("%c\n", current->name);
+                break;
+            case '1':
+                current = current->next1;
+                printf("%c\n", current->name);
+                break;
+            case 'C':
+                change_states(current, input);
+                break;
+            case 'P':
+                print_states();
+                break;
+            case 'G':
+                reset_garbage();
+                garbage_identify(current);
+                print_garbage();
+                break;
+            case 'D':
+                delete_states(current, input);
+                break;
+            case 'Q':
+                exit(0);
+            default:
+                printf("Unknown command '%s'. Please re-enter command\n", input);
+        }
+    }
+
+    exit(0);
+}
+
+void initialize_states() {
+    for (i = 0; i < MAX_STATES; i++) {
+        fsm[i].name = i + 65;
+    }
+    
+    fsm[0].next0 = fsm + 6;
+    fsm[0].next1 = fsm + 2;
+    fsm[1].next0 = fsm + 5;
+    fsm[1].next1 = fsm + 6;
+    fsm[2].next0 = fsm + 3;
+    fsm[2].next1 = fsm + 0;
+    fsm[3].next0 = fsm + 4;
+    fsm[3].next1 = fsm + 3;
+    fsm[4].next0 = fsm + 7;
+    fsm[4].next1 = fsm + 1;
+    fsm[5].next0 = fsm + 0;
+    fsm[5].next1 = fsm + 7;
+    fsm[6].next0 = fsm + 5;
+    fsm[6].next1 = fsm + 3;
+    fsm[7].next0 = fsm + 2;
+    fsm[7].next1 = fsm + 1;
+}
+
+void print_states(){
+    for (i = 0; i < MAX_STATES; i++){
+        if (deleted[i] != i + 65){
+            printf("%c", fsm[i].name);
+            printf("%c", fsm[i].next0->name);
+            printf("%c", fsm[i].next1->name);
+            printf("\n");
+        }
+    }
+}
+
+void change_states(position *current, char inp[]){
+    char input2;
+    char input3;
+    
+    input2 = next_char(inp, 1);
+    input3 = next_char(inp, i + 1);
+    
+    switch (input2){
+        case '0':
+            if (input3 >= 'A' && input3 <= 'H' && deleted[input3 - 65] != input3){
+                current->next0 = fsm + (input3 - 65);
+            }
+            else
+                printf("State '%c' is not legal position. No changes made\n", input3);
+            break;
+        case '1':
+            if (input3 >= 'A' && input3 <= 'H' && deleted[input3-65] != input3){
+                current->next1 = fsm + (input3 - 65);
+            }
+            else
+                printf("State '%c' is not legal position. No changes made\n", input3);
+            break;
+        default:
+            printf("Illegal change command invoked\n");
+    }
+}
+
+void garbage_identify (position *current){
+    position *next;
+    next = current;
+    next = next-> next0;
+    garbage[current->name - 65] = '0'; //store position as 0 if not garbage
+    
+    if (garbage[next->name - 65] != '0')
+            garbage_identify(next);
+    
+    next = current-> next1;
+    
+    if (garbage[next->name-65] != '0')
+        garbage_identify(next);
+}
+
+void print_garbage()
+{ //print non-zero states
+    if (garbage_empty()){
+        printf("No Garbage");
+    }
+    else {
+        printf("Garbage: ");
+        for (i = 0; i <8; i++)
+            if (garbage[i] != '0')
+                printf("%c ", garbage[i]);
+    }
+    printf("\n");
+}
+
+void reset_garbage(){
+    for (i=0;i < MAX_STATES; i++)
+        garbage[i] = i + 65;
+}
+
+void delete_states (position *current, char inp[]){
+    char argument;
+    
+    argument = next_char(inp, 1);
+    
+    reset_garbage();
+    garbage_identify(current);
+    
+    if (argument == 0){
+        if (garbage_equals_deleted()){
+            printf("No position(s) deleted\n");
+        }
+        else {
+            printf("Deleted: ");
+            for (i = 0; i < MAX_STATES; i++){
+                if (garbage[i] != '0' && deleted[i] != i + 65){
+                    printf(" %c ", garbage[i]);
+                    deleted[i] = garbage[i];
+                }
+            }
+            printf("\n");
+        }
+    }
+    else if ((argument >= 'A' && argument <= 'H')){
+        if (garbage[argument - 65] == argument && deleted[argument - 65] != argument){
+            deleted[argument - 65] = argument;
+            printf("Deleted\n");
+        }
+        else
+            printf("Not Deleted\n");
+    }
+    else
+        printf("Unknown delete command\n");
+}
+
+char next_char (char inp[], int start_position){
+    i = start_position;
+    
+    while (i <= 10 && inp[i] == ' ' && inp[i] != 10)
+        i++;
+    
+    return inp[i];
+}
+
+int garbage_empty(){
+    int is_empty = 1;
+    
+    for (i = 0; i < MAX_STATES; i++){
+        if (garbage[i] != '0')
+            is_empty = 0;
+    }
+    if (is_empty != 0){
+        return (1);
+    }
+    else
+        return(0);
+}
+
+int garbage_equals_deleted(){
+    int is_equal = 1;
+    
+    for (i = 0; i < MAX_STATES; i++){
+        if (garbage[i] != deleted[i])
+            is_equal = 0;
+    }
+    if (is_equal != 0)
+        return(1);
+    else
+        return(0);
+}
+
+void to_Uppercase(char inp[]){
+    for (i = 0; i < 10 && inp [i] !=0; i++){
+        if (inp[i] >= 'a' && inp[i] <= 'z')
+            inp[i] = inp[i] - 32;
+    }
+}
